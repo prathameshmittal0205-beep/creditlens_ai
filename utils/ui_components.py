@@ -42,7 +42,7 @@ SEGMENT_COLORS = {
 def set_page_config(page_title: str = "CreditLens AI"):
     st.set_page_config(
         page_title=page_title,
-        page_icon="💳",
+        page_icon="assets/logo.png",
         layout="wide",
         initial_sidebar_state="expanded",
     )

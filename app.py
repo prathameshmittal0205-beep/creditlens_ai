@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import time
+import base64
+import os
 
 from utils.ui_components import (
     set_page_config,
@@ -33,6 +35,15 @@ from models.credit_scoring import train_credit_model, get_feature_importance
 from models.explainability import generate_shap_values
 
 set_page_config("CreditLens AI")
+
+if os.path.exists("assets/logo.png"):
+    st.logo("assets/logo.png", size="large")
+
+def get_base64_image(image_path):
+    if not os.path.exists(image_path):
+        return ""
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode('utf-8')
 
 st.markdown(
     """
@@ -226,15 +237,23 @@ def build_models(df):
 def data_upload_page():
     n = len(st.session_state.get("features", [])) if "features" in st.session_state else 0
     cust_str = f"{n:,}" if n > 0 else "---"
+    
+    logo_base64 = get_base64_image("assets/logo.png")
+    img_tag = f'<img src="data:image/png;base64,{logo_base64}" style="width: 72px; height: 72px; margin-right: 20px; filter: drop-shadow(0 4px 12px rgba(16, 185, 129, 0.2));" />' if logo_base64 else ""
+
     st.markdown(
         f"""
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
             <div>
                 <div class="cl-hero-sub">Behavioral Credit Intelligence Platform</div>
-                <div class="cl-hero-title">Credit<span>Lens</span> AI</div>
-                <div class="cl-hero-body" style="margin-bottom: 0;">
-                  Evaluates creditworthiness through transaction behaviour — enabling fair,
-                  explainable decisions for gig workers, freelancers, and informal earners.
+                <div style="display: flex; align-items: center; margin-bottom: 0.25rem;">
+                    {img_tag}
+                    <div class="cl-hero-title" style="margin: 0;">Credit<span>Lens</span> AI</div>
+                </div>
+                    <div class="cl-hero-body" style="margin-bottom: 0;">
+                      Evaluates creditworthiness through transaction behaviour — enabling fair,
+                      explainable decisions for gig workers, freelancers, and informal earners.
+                    </div>
                 </div>
             </div>
             <div style="text-align: right; min-width: 200px;">
