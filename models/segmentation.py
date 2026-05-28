@@ -12,7 +12,11 @@ def train_segmentation_model(scaled_data, num_clusters=3):
     clusters = kmeans.fit_predict(scaled_data)
     
     # Calculate silhouette score for confidence
-    silhouette = silhouette_score(scaled_data, clusters)
+    try:
+        silhouette = silhouette_score(scaled_data, clusters)
+    except Exception as e:
+        print(f"Warning: Failed to calculate silhouette score: {e}")
+        silhouette = 0.0
     
     return kmeans, clusters, silhouette
 

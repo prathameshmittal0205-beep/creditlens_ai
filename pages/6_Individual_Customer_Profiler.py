@@ -14,376 +14,119 @@ from utils.ui_components import (
 # ─────────────────────────────────────────────
 # PAGE CONFIG
 # ─────────────────────────────────────────────
-
 set_page_config("Individual Customer Profiler")
 
-st.title("Individual Customer Profiler")
-
-st.markdown(
-    """
-    Analyze customer-level credit intelligence,
-    repayment behavior, utilization trends,
-    and financial risk patterns.
-    """
-)
-
-# ─────────────────────────────────────────────
-# CUSTOMER DATA
-# ─────────────────────────────────────────────
-
-customer_df = pd.DataFrame({
-    "Customer": [
-        "Aarav Sharma",
-        "Priya Mehta",
-        "Rohan Verma",
-        "Ananya Iyer",
-        "Kabir Singh",
-        "Neha Kapoor",
-        "Aditya Rao",
-        "Sneha Nair",
-        "Vikram Joshi",
-        "Ishita Desai"
-    ],
-
-    "Credit Score": [
-        782,
-        745,
-        691,
-        815,
-        642,
-        705,
-        768,
-        721,
-        688,
-        799
-    ],
-
-    "Income": [
-        120000,
-        98000,
-        76000,
-        142000,
-        65000,
-        87000,
-        115000,
-        92000,
-        71000,
-        136000
-    ],
-
-    "Utilization %": [
-        32,
-        45,
-        61,
-        28,
-        84,
-        57,
-        39,
-        51,
-        77,
-        30
-    ],
-
-    "Risk": [
-        "Low",
-        "Low",
-        "Medium",
-        "Low",
-        "High",
-        "Medium",
-        "Low",
-        "Medium",
-        "High",
-        "Low"
-    ]
-})
-
-# ─────────────────────────────────────────────
-# CUSTOMER SELECTOR
-# ─────────────────────────────────────────────
-
-render_section("CUSTOMER SELECTOR")
-
-selected_customer = st.selectbox(
-    "Choose Customer",
-    customer_df["Customer"]
-)
-
-customer_data = customer_df[
-    customer_df["Customer"] == selected_customer
-].iloc[0]
-
-# ─────────────────────────────────────────────
-# KPI SECTION
-# ─────────────────────────────────────────────
-
-render_section("CUSTOMER METRICS")
-
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    render_kpi(
-        "CREDIT SCORE",
-        str(customer_data["Credit Score"]),
-        "+12"
+try:
+    st.title("Individual Customer Profiler")
+    st.markdown(
+        """
+        Analyze customer-level credit intelligence,
+        repayment behavior, utilization trends,
+        and financial risk patterns.
+        """
     )
 
-with col2:
-    render_kpi(
-        "MONTHLY INCOME",
-        f"₹{customer_data['Income']:,}",
-        "+4.1%"
-    )
+    if "features" not in st.session_state or "xgb_model" not in st.session_state:
+        st.warning("Please run the main app.py first to initialise data.")
+        st.stop()
 
-with col3:
-    render_kpi(
-        "UTILIZATION",
-        f"{customer_data['Utilization %']}%",
-        "-2.4%"
-    )
+    features = st.session_state["features"]
+    raw_data = st.session_state["raw_data"]
+    xgb_model = st.session_state["xgb_model"]
+    X_ml = st.session_state["X_ml"]
 
-with col4:
-    risk = customer_data["Risk"]
+    # Pre-calculate predictions for all to show score
+    probs = xgb_model.predict_proba(X_ml)[:, 1]
+    scores = (1 - probs) * 1000
 
-    delta_positive = True if risk == "Low" else False
+    # ─────────────────────────────────────────────
+    # CUSTOMER SELECTOR
+    # ─────────────────────────────────────────────
+    render_section("CUSTOMER SELECTOR")
+    selected_customer = st.selectbox("Choose Customer", features["customer_id"].unique())
+    
+    idx = features.index[features["customer_id"] == selected_customer][0]
+    cust_feat = features.iloc[idx]
+    cust_score = scores[idx]
+    
+    if cust_score >= 700:
+        risk = "Low"
+    elif cust_score >= 550:
+        risk = "Medium"
+    else:
+        risk = "High"
 
-    render_kpi(
-        "RISK LEVEL",
-        risk,
-        "STABLE",
-        delta_positive=delta_positive
-    )
+    # ─────────────────────────────────────────────
+    # KPI SECTION
+    # ─────────────────────────────────────────────
+    render_section("CUSTOMER METRICS")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        render_kpi("CREDIT SCORE", f"{int(cust_score)}/1000", "Predicted")
+    with col2:
+        render_kpi("MONTHLY INCOME", f"${cust_feat['avg_monthly_income']:,.0f}", "Average")
+    with col3:
+        render_kpi("SAVINGS RATIO", f"{cust_feat['savings_ratio']*100:.1f}%", "Calculated")
+    with col4:
+        delta_positive = True if risk == "Low" else False
+        render_kpi("RISK LEVEL", risk, "Model Output", delta_positive=delta_positive)
 
-# ─────────────────────────────────────────────
-# CREDIT RISK GAUGE
-# ─────────────────────────────────────────────
-
-render_section("RISK SCORE")
-
-risk_score = int(customer_data["Credit Score"] / 8.5)
-
-fig_gauge = go.Figure(
-    go.Indicator(
-        mode="gauge+number",
-
-        value=risk_score,
-
-        number={
-            "font": {
-                "size": 42,
-                "color": "#e8eaf0"
-            }
-        },
-
-        title={
-            "text": "Customer Risk Score",
-            "font": {
-                "size": 16,
-                "color": "#9ca3af"
-            }
-        },
-
+    # ─────────────────────────────────────────────
+    # CREDIT RISK GAUGE
+    # ─────────────────────────────────────────────
+    render_section("RISK SCORE")
+    
+    fig_gauge = go.Figure(go.Indicator(
+        mode="gauge+number", value=int(cust_score/10),
+        number={"font": {"size": 42, "color": "#e8eaf0"}},
+        title={"text": "Customer Risk Score (Normalized)", "font": {"size": 16, "color": "#9ca3af"}},
         gauge={
-
-            "axis": {
-                "range": [0, 100],
-                "tickcolor": "#9ca3af"
-            },
-
-            "bar": {
-                "color": "#6366f1"
-            },
-
+            "axis": {"range": [0, 100], "tickcolor": "#9ca3af"},
+            "bar": {"color": "#6366f1"},
             "bgcolor": "rgba(255,255,255,0.04)",
-
             "steps": [
-                {
-                    "range": [0, 40],
-                    "color": "rgba(239,68,68,0.25)"
-                },
-                {
-                    "range": [40, 70],
-                    "color": "rgba(245,158,11,0.25)"
-                },
-                {
-                    "range": [70, 100],
-                    "color": "rgba(16,185,129,0.25)"
-                }
+                {"range": [0, 55], "color": "rgba(239,68,68,0.25)"},
+                {"range": [55, 70], "color": "rgba(245,158,11,0.25)"},
+                {"range": [70, 100], "color": "rgba(16,185,129,0.25)"}
             ]
         }
-    )
-)
+    ))
+    fig_gauge.update_layout(**plotly_layout(title="Credit Risk Analysis", height=350))
+    st.plotly_chart(fig_gauge, use_container_width=True)
 
-fig_gauge.update_layout(
-    **plotly_layout(
-        title="Credit Risk Analysis",
-        height=350
-    )
-)
-
-st.plotly_chart(
-    fig_gauge,
-    use_container_width=True
-)
-
-# ─────────────────────────────────────────────
-# UTILIZATION ANALYSIS
-# ─────────────────────────────────────────────
-
-render_section("UTILIZATION ANALYSIS")
-
-fig_bar = px.bar(
-    customer_df,
-    x="Customer",
-    y="Utilization %",
-    color="Risk",
-
-    color_discrete_map={
-        "Low": "#10b981",
-        "Medium": "#f59e0b",
-        "High": "#ef4444"
-    }
-)
-
-fig_bar.update_layout(
-    **plotly_layout(
-        title="Customer Credit Utilization",
-        height=450
-    )
-)
-
-st.plotly_chart(
-    fig_bar,
-    use_container_width=True
-)
-
-# ─────────────────────────────────────────────
-# RADAR CHART
-# ─────────────────────────────────────────────
-
-render_section("BEHAVIOR PROFILE")
-
-categories = [
-    "Repayment",
-    "Spending",
-    "Savings",
-    "Income Stability",
-    "Credit Usage",
-    "Financial Discipline"
-]
-
-values = [82, 68, 74, 88, 61, 79]
-
-categories += categories[:1]
-values += values[:1]
-
-fig_radar = go.Figure()
-
-fig_radar.add_trace(
-    go.Scatterpolar(
-        r=values,
-        theta=categories,
-
-        fill="toself",
-
-        fillcolor="rgba(99,102,241,0.10)",
-
-        line=dict(
-            color="#6366f1",
-            width=2
-        ),
-
-        marker=dict(
-            size=6,
-            color="#6366f1"
-        ),
-
-        name="Behavior Pattern"
-    )
-)
-
-fig_radar.update_layout(
-    template="plotly_dark",
-
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)",
-
-    polar=dict(
-        bgcolor="rgba(0,0,0,0)",
-
-        radialaxis=dict(
-            visible=True,
-            range=[0, 100],
-            gridcolor="rgba(255,255,255,0.08)",
-            linecolor="rgba(255,255,255,0.08)",
-            tickfont=dict(color="#9ca3af")
-        ),
-
-        angularaxis=dict(
-            gridcolor="rgba(255,255,255,0.08)",
-            linecolor="rgba(255,255,255,0.08)",
-            tickfont=dict(color="#9ca3af")
+    # ─────────────────────────────────────────────
+    # SPENDING TRENDS
+    # ─────────────────────────────────────────────
+    render_section("TRANSACTION HISTORY")
+    
+    cust_tx = raw_data[raw_data["customer_id"] == selected_customer].copy()
+    if not cust_tx.empty:
+        cust_tx['month'] = pd.to_datetime(cust_tx['transaction_date']).dt.to_period('M').astype(str)
+        monthly_tx = cust_tx.groupby(['month', 'transaction_type'])['transaction_amount'].sum().reset_index()
+        
+        fig_bar = px.bar(
+            monthly_tx, x="month", y="transaction_amount", color="transaction_type",
+            barmode="group", color_discrete_map={"income": "#10b981", "expense": "#ef4444"}
         )
-    ),
+        fig_bar.update_layout(**plotly_layout("Monthly Income vs Expense", height=450))
+        st.plotly_chart(fig_bar, use_container_width=True)
+    else:
+        st.info("No transaction history available for visualization.")
 
-    margin=dict(
-        l=20,
-        r=20,
-        t=40,
-        b=20
-    ),
+    # ─────────────────────────────────────────────
+    # SYSTEM STATUS
+    # ─────────────────────────────────────────────
+    render_section("SYSTEM STATUS")
+    
+    if risk == "Low":
+        pill = render_status_pill("LOW RISK - APPROVED", "active")
+    elif risk == "Medium":
+        pill = render_status_pill("MEDIUM RISK - REVIEW", "warning")
+    else:
+        pill = render_status_pill("HIGH RISK - REJECTED", "error")
+        
+    st.markdown(pill, unsafe_allow_html=True)
 
-    height=500,
-    showlegend=False
-)
-
-st.plotly_chart(
-    fig_radar,
-    use_container_width=True
-)
-
-# ─────────────────────────────────────────────
-# TOP N CUSTOMERS
-# ─────────────────────────────────────────────
-
-render_section("TOP N CUSTOMERS")
-
-top_n = st.slider(
-    "Select Number of Customers",
-    min_value=1,
-    max_value=len(customer_df),
-    value=5
-)
-
-top_customers = customer_df.sort_values(
-    by="Credit Score",
-    ascending=False
-).head(top_n)
-
-st.dataframe(
-    top_customers,
-    use_container_width=True,
-    hide_index=True
-)
-
-# ─────────────────────────────────────────────
-# SYSTEM STATUS
-# ─────────────────────────────────────────────
-
-render_section("SYSTEM STATUS")
-
-risk = customer_data["Risk"]
-
-if risk == "Low":
-    pill = render_status_pill("LOW RISK", "active")
-
-elif risk == "Medium":
-    pill = render_status_pill("MEDIUM RISK", "warning")
-
-else:
-    pill = render_status_pill("HIGH RISK", "error")
-
-st.markdown(
-    pill,
-    unsafe_allow_html=True
-)
+except Exception as e:
+    st.error(f"An error occurred rendering the page: {e}")
