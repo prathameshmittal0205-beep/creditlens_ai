@@ -224,16 +224,24 @@ def build_models(df):
 
 
 def data_upload_page():
+    n = len(st.session_state.get("features", [])) if "features" in st.session_state else 0
+    cust_str = f"{n:,}" if n > 0 else "---"
     st.markdown(
-        """
-        <div class="cl-hero-sub">Behavioral Credit Intelligence Platform</div>
-        <div class="cl-hero-title">Credit<span>Lens</span> AI</div>
-        <div class="cl-hero-body">
-          Evaluates creditworthiness through transaction behaviour — enabling fair,
-          explainable decisions for gig workers, freelancers, and informal earners
-          who lack traditional credit histories. Powered by KMeans segmentation,
-          BG/NBD lifetime value modelling, and XGBoost credit scoring with SHAP
-          explainability built in at every layer.
+        f"""
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
+            <div>
+                <div class="cl-hero-sub">Behavioral Credit Intelligence Platform</div>
+                <div class="cl-hero-title">Credit<span>Lens</span> AI</div>
+                <div class="cl-hero-body" style="margin-bottom: 0;">
+                  Evaluates creditworthiness through transaction behaviour — enabling fair,
+                  explainable decisions for gig workers, freelancers, and informal earners.
+                </div>
+            </div>
+            <div style="text-align: right; min-width: 200px;">
+                <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Total Profiles</div>
+                <div style="font-family: 'Fraunces', serif; font-size: 2.5rem; color: #e8eaf0; line-height: 1;">{cust_str}</div>
+                <div style="font-size: 12px; color: #10b981; font-family: 'DM Mono', monospace;">+ 12 mo history</div>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -328,77 +336,157 @@ def data_upload_page():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    render_section("System Overview")
-
-    c1, c2, c3, c4, c5 = st.columns(5)
-
-    with c1:
-        n = len(st.session_state.get("features", [])) if "features" in st.session_state else 500
-        render_kpi("Customers", f"{n:,}", delta="Synthetic profiles", delta_positive=True)
-    with c2:
-        render_kpi("Time Horizon", "12 mo", delta="Transaction history", delta_positive=True)
-    with c3:
-        render_kpi("Active Models", "5", delta="KMeans · BG/NBD · XGB", delta_positive=True)
-    with c4:
-        metrics = st.session_state.get("classification_metrics") or {}
-        roc = metrics.get("roc_auc", 0)
-        render_kpi("ROC-AUC", f"{roc:.4f}" if roc else "—", delta="XGBoost scorer", delta_positive=True)
-    with c5:
-        render_kpi("Fairness Audit", "ON", delta="SHAP + segment parity", delta_positive=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    render_section("Model Registry")
-
-    registry = [
-        {"category": "Segmentation", "name": "KMeans", "detail": "k=3 clusters · PCA 3D", "status": "active", "color": COLOR_EMERALD, "icon": "atom"},
-        {"category": "Lifetime Value", "name": "BG / NBD", "detail": "Pareto/NBD variant", "status": "active", "color": COLOR_BLUE, "icon": "trending-up"},
-        {"category": "Spend Model", "name": "Gamma-Gamma", "detail": "Monetary prediction", "status": "active", "color": COLOR_BLUE, "icon": "currency-dollar"},
-        {"category": "Credit Score", "name": "XGBoost", "detail": "Binary classifier · SMOTE", "status": "active", "color": COLOR_INDIGO, "icon": "cpu"},
-        {"category": "Explainability", "name": "SHAP", "detail": "TreeExplainer · Waterfall", "status": "warning", "color": COLOR_AMBER, "icon": "eye"},
-    ]
-
-    cols = st.columns(5)
-    for col, card in zip(cols, registry):
-        with col:
-            pill  = render_status_pill(label="LIVE" if card["status"] == "active" else "READY", status=card["status"])
-            st.markdown(
-                f"""
-                <div class="model-card">
-                  <div class="model-card-cat">{card["category"]}</div>
-                  <div class="model-card-name">{card["name"]}</div>
-                  <div class="model-card-detail">{card["detail"]}</div>
-                  {pill}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
+    render_section("Pipeline Architecture")
+    
+    st.markdown(
+        """
+        <style>
+        .pipeline-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #111318;
+            border: 1px solid #1e2430;
+            border-radius: 8px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 1rem;
+        }
+        .pipeline-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            flex: 1;
+        }
+        .pipeline-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .node-2 .pipeline-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: rgba(59, 130, 246, 0.2); }
+        .node-3 .pipeline-icon { background: rgba(99, 102, 241, 0.1); color: #6366f1; border-color: rgba(99, 102, 241, 0.2); }
+        .node-4 .pipeline-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
+        
+        .pipeline-title {
+            font-family: 'Fraunces', serif;
+            font-size: 15px;
+            color: #e8eaf0;
+            margin-bottom: 4px;
+        }
+        .pipeline-sub {
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .pipeline-edge {
+            color: #232832;
+            font-size: 20px;
+            padding: 0 10px;
+        }
+        </style>
+        
+        <div class="pipeline-container">
+            <div class="pipeline-node">
+                <div class="pipeline-icon">👥</div>
+                <div class="pipeline-title">Segmentation</div>
+                <div class="pipeline-sub">KMeans (k=3)</div>
+            </div>
+            <div class="pipeline-edge">➔</div>
+            <div class="pipeline-node node-2">
+                <div class="pipeline-icon">📈</div>
+                <div class="pipeline-title">Lifetime Value</div>
+                <div class="pipeline-sub">BG/NBD + Gamma</div>
+            </div>
+            <div class="pipeline-edge">➔</div>
+            <div class="pipeline-node node-3">
+                <div class="pipeline-icon">🎯</div>
+                <div class="pipeline-title">Credit Scorer</div>
+                <div class="pipeline-sub">XGBoost · SMOTE</div>
+            </div>
+            <div class="pipeline-edge">➔</div>
+            <div class="pipeline-node node-4">
+                <div class="pipeline-icon">👁️</div>
+                <div class="pipeline-title">Explainability</div>
+                <div class="pipeline-sub">SHAP values</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
     st.markdown("<br>", unsafe_allow_html=True)
 
     if "features" in st.session_state:
-        render_section("Live Portfolio Snapshot")
+        render_section("Intelligence Summary")
+        
         features    = st.session_state["features"]
         clv_metrics = st.session_state["clv_metrics"]
         metrics     = st.session_state["classification_metrics"]
 
-        m1, m2, m3, m4, m5, m6 = st.columns(6)
-
-        with m1:
-            render_kpi("Avg Savings Ratio", f"{features['savings_ratio'].mean() * 100:.1f}%")
-        with m2:
-            render_kpi("Default Rate", f"{features['loan_default'].mean() * 100:.1f}%", delta="portfolio-wide", delta_positive=False)
-        with m3:
-            render_kpi("Avg CLV", f"${clv_metrics['clv_score'].mean():.2f}" if clv_metrics is not None else "—")
-        with m4:
-            render_kpi("Avg Retention", f"{clv_metrics['retention_probability'].mean():.1%}" if clv_metrics is not None else "—", delta="6-month horizon", delta_positive=True)
-        with m5:
-            roc = metrics.get('roc_auc')
-            render_kpi("ROC-AUC", f"{roc:.3f}" if roc is not None else "—", delta="credit model", delta_positive=True)
-        with m6:
+        left_col, right_col = st.columns([7, 3])
+        
+        with left_col:
+            lc1, lc2 = st.columns(2)
+            with lc1:
+                def_rate = features['loan_default'].mean() * 100
+                st.markdown(
+                    f"""<div style="background: #111318; border: 1px solid #1e2430; border-radius: 8px; padding: 1.5rem; height: 100%;">
+<div style="font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Portfolio Risk</div>
+<div style="font-family: 'Fraunces', serif; font-size: 2rem; color: #ef4444; margin-bottom: 12px;">{def_rate:.1f}% Default Rate</div>
+<div style="height: 4px; background: #1e2430; border-radius: 2px; overflow: hidden;">
+<div style="height: 100%; width: {def_rate:.1f}%; background: #ef4444;"></div>
+</div>
+</div>""", unsafe_allow_html=True
+                )
+                
+            with lc2:
+                avg_clv = clv_metrics['clv_score'].mean() if clv_metrics is not None else 0
+                st.markdown(
+                    f"""<div style="background: #111318; border: 1px solid #1e2430; border-radius: 8px; padding: 1.5rem; height: 100%;">
+<div style="font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Value Prediction</div>
+<div style="font-family: 'Fraunces', serif; font-size: 2rem; color: #3b82f6; margin-bottom: 4px;">${avg_clv:.2f} Avg CLV</div>
+<div style="font-size: 12px; color: #9ca3af; font-family: 'DM Mono', monospace;">6-month projection horizon</div>
+</div>""", unsafe_allow_html=True
+                )
+                
+        with right_col:
+            roc = metrics.get('roc_auc', 0)
             silhouette = st.session_state.get("silhouette_score", 0)
-            render_kpi("Silhouette Score", f"{silhouette:.3f}" if silhouette else "—", delta="cluster quality", delta_positive=True)
-
+            
+            st.markdown(
+                f"""<div style="background: #111318; border: 1px solid #1e2430; border-radius: 8px; padding: 1.5rem; height: 100%;">
+<div style="font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Model Health</div>
+<div style="margin-bottom: 16px;">
+<div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+<span style="font-size: 12px; color: #9ca3af;">Credit Accuracy (AUC)</span>
+<span style="font-size: 12px; color: #e8eaf0; font-weight: bold;">{roc:.3f}</span>
+</div>
+<div style="height: 2px; background: #1e2430; border-radius: 2px;">
+<div style="height: 100%; width: {roc * 100:.1f}%; background: #10b981;"></div>
+</div>
+</div>
+<div>
+<div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+<span style="font-size: 12px; color: #9ca3af;">Cluster Quality</span>
+<span style="font-size: 12px; color: #e8eaf0; font-weight: bold;">{silhouette:.3f}</span>
+</div>
+<div style="height: 2px; background: #1e2430; border-radius: 2px;">
+<div style="height: 100%; width: {silhouette * 100:.1f}%; background: #f59e0b;"></div>
+</div>
+</div>
+</div>""", unsafe_allow_html=True
+            )
+            
         st.markdown("<br>", unsafe_allow_html=True)
 
     render_section("Platform Notes")
