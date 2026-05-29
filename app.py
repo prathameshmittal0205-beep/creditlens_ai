@@ -527,16 +527,16 @@ render_sb_header()
 
 pages = {
     "CORE OVERVIEW": [
-        st.Page("pages/1_Executive_Overview.py", title="Executive Overview", icon="📊")
+        st.Page("pages/1_Executive_Overview.py", title="Executive Overview")
     ],
     "DATA & INTELLIGENCE": [
-        st.Page(data_upload_page, title="Data Upload", icon="📁", default=True),
-        st.Page("pages/2_Behavioral_Segmentation.py", title="Customer Segmentation", icon="👥"),
-        st.Page("pages/3_CLV_Intelligence.py", title="CLV Intelligence", icon="📈")
+        st.Page(data_upload_page, title="Data Upload", default=True),
+        st.Page("pages/2_Behavioral_Segmentation.py", title="Customer Segmentation"),
+        st.Page("pages/3_CLV_Intelligence.py", title="CLV Intelligence")
     ],
     "RISK & EXPLAINABILITY": [
-        st.Page("pages/4_Credit_Scoring.py", title="Credit Scoring", icon="🎯"),
-        st.Page("pages/6_Individual_Customer_Profiler.py", title="Customer Profiler", icon="👤")
+        st.Page("pages/4_Credit_Scoring.py", title="Credit Scoring"),
+        st.Page("pages/6_Individual_Customer_Profiler.py", title="Customer Profiler")
     ]
 }
 
