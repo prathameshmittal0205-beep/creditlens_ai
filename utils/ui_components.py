@@ -112,6 +112,16 @@ def _inject_global_css():
         [data-testid="stSidebarNav"] ul li span {
             color: #F8FAFC !important;
             font-weight: 500;
+            transition: color 0.2s ease, background-color 0.2s ease;
+        }
+        
+        /* Navigation Hover Effect */
+        [data-testid="stSidebarNav"] a:hover {
+            background-color: rgba(30, 41, 59, 0.5) !important;
+            border-radius: 6px !important;
+        }
+        [data-testid="stSidebarNav"] a:hover span {
+            color: #10b981 !important;
         }
         .sb-header {
             margin-bottom: 24px;
