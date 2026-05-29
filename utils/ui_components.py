@@ -104,6 +104,15 @@ def _inject_global_css():
             background: #0F1629 !important; /* Deep navy */
             border-right: 1px solid #1e293b !important;
         }
+        
+        /* Brighten Navigation Links */
+        [data-testid="stSidebarNav"] a span, 
+        [data-testid="stSidebarNavItems"] a span,
+        [data-testid="stSidebarNavSeparator"] + div span,
+        [data-testid="stSidebarNav"] ul li span {
+            color: #F8FAFC !important;
+            font-weight: 500;
+        }
         .sb-header {
             margin-bottom: 24px;
         }
